@@ -335,8 +335,8 @@ const I18N = {
     t_cwait: 'Doucement : attends quelques secondes entre deux commentaires.', t_cmin: 'Écris au moins quelques mots.', t_cfail: 'Commentaire non envoyé : réessaie.', t_vfail: 'Vote non enregistré (connexion ?)',
     t_del: 'Supprimé pour tout le monde.', t_deny: 'Suppression refusée — reconnecte-toi en modérateur.', t_welcome: 'Bienvenue, modérateur.', t_already: 'Déjà en mode modérateur.',
     lock: 'Modérateur', admin_pill: '🛡️ Modérateur ✕', admin_noconf: 'Le mot de passe modérateur n’est pas configuré sur le serveur : ajoute ADMIN_PASSWORD dans Vercel puis redéploie.', admin_down: 'Serveur injoignable : réessaie dans un instant.',
-    pin: '📌 Épingler', unpin: '📌 Désépingler', hide: '🙈 Masquer', unhide: '👁 Réafficher', b_pin: '📌 Épinglée', b_hid: '🙈 Masquée — invisible pour les autres',
-    t_pin: 'Épinglée en haut pour tout le monde.', t_unpin: 'Désépinglée.', hid_show: '🙈 Afficher les masquées ({n})', hid_hide: '🙈 Cacher les masquées ({n})', t_hide: 'Masquée pour tout le monde. Retrouve-la avec « Afficher les masquées » sous le fil.', t_unhide: 'Réaffichée pour tout le monde.', t_modfail: 'Action impossible : vérifie ta connexion et que la base Supabase est à jour (schema.sql).'
+    pin: '📌 Épingler', unpin: '📌 Désépingler', hide: '🙈 Masquer', unhide: '👁 Réafficher', b_pin: '📌 Épinglée', b_hid: '🙈 Masquée par les organisateurs',
+    t_pin: 'Épinglée en haut pour tout le monde.', t_unpin: 'Désépinglée.', hid_show: '🙈 Afficher les masquées ({n})', hid_hide: '🙈 Cacher les masquées ({n})', t_hide: 'Masquée pour tout le monde (chacun peut choisir de la voir avec « Afficher les masquées »).', t_unhide: 'Réaffichée pour tout le monde.', t_modfail: 'Action impossible : vérifie ta connexion et que la base Supabase est à jour (schema.sql).'
   },
   en: {
     admin_bar: '🛡️ Moderator mode — you can delete confessions and comments.', admin_exit: 'Exit',
@@ -364,8 +364,8 @@ const I18N = {
     t_cwait: 'Slow down: wait a few seconds between comments.', t_cmin: 'Write at least a few words.', t_cfail: 'Comment not sent: please retry.', t_vfail: 'Vote not saved (connection?)',
     t_del: 'Deleted for everyone.', t_deny: 'Deletion refused — log in as moderator again.', t_welcome: 'Welcome, moderator.', t_already: 'Already in moderator mode.',
     lock: 'Moderator', admin_pill: '🛡️ Moderator ✕', admin_noconf: 'The moderator password is not configured on the server: add ADMIN_PASSWORD in Vercel, then redeploy.', admin_down: 'Server unreachable: try again in a moment.',
-    pin: '📌 Pin', unpin: '📌 Unpin', hide: '🙈 Hide', unhide: '👁 Show again', b_pin: '📌 Pinned', b_hid: '🙈 Hidden — invisible to others',
-    t_pin: 'Pinned to the top for everyone.', t_unpin: 'Unpinned.', hid_show: '🙈 Show hidden ({n})', hid_hide: '🙈 Hide hidden ({n})', t_hide: 'Hidden for everyone. Find it again with “Show hidden” under the feed.', t_unhide: 'Visible again for everyone.', t_modfail: 'Action failed: check your connection and that the Supabase database is up to date (schema.sql).'
+    pin: '📌 Pin', unpin: '📌 Unpin', hide: '🙈 Hide', unhide: '👁 Show again', b_pin: '📌 Pinned', b_hid: '🙈 Hidden by the organisers',
+    t_pin: 'Pinned to the top for everyone.', t_unpin: 'Unpinned.', hid_show: '🙈 Show hidden ({n})', hid_hide: '🙈 Hide hidden ({n})', t_hide: 'Hidden for everyone (anyone can choose to see it with “Show hidden”).', t_unhide: 'Visible again for everyone.', t_modfail: 'Action failed: check your connection and that the Supabase database is up to date (schema.sql).'
   }
 };
 const MOOD_LABEL = { fr: { Stress: 'Stress', Solitude: 'Solitude', 'Études': 'Études', Famille: 'Famille', Espoir: 'Espoir', Autre: 'Autre' }, en: { Stress: 'Stress', Solitude: 'Loneliness', 'Études': 'Studies', Famille: 'Family', Espoir: 'Hope', Autre: 'Other' } };
@@ -490,7 +490,7 @@ const Store = {
 const story = $('#story'), sendBtn = $('#sendStory');
 let pickedMood = 'Autre', sending = false, phIdx = 0, sortMode = 'new', moodFilter = 'Tous', isAdmin = false, freshId = null, shown = 10;
 try { isAdmin = sessionStorage.getItem('mhm_admin') === '1'; } catch (e) {}
-let showHidden = false; try { showHidden = sessionStorage.getItem('mhm_showhid') === '1'; } catch (e) {}   // le modérateur choisit s'il voit les confessions masquées
+let showHidden = !!ls.get('mhm_showhid', false);   // choix personnel de chaque visiteur : voir ou non les confessions masquées (n'affecte personne d'autre)
 
 function grow() { story.style.height = 'auto'; story.style.height = Math.min(story.scrollHeight + 2, innerHeight * .6) + 'px'; }
 function updateComposer() {
@@ -552,7 +552,7 @@ function syncControls() {
 }
 document.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortMode = b.dataset.sort; shown = 10; syncControls(); render(true); });
 $('#moreBtn').onclick = () => { shown += 10; render(true); };
-$('#hidToggle').onclick = () => { showHidden = !showHidden; try { sessionStorage.setItem('mhm_showhid', showHidden ? '1' : '0'); } catch (e) {} render(true); };
+$('#hidToggle').onclick = () => { showHidden = !showHidden; ls.set('mhm_showhid', showHidden); render(true); };
 
 function render(force) {
   const ae = document.activeElement;
@@ -563,7 +563,7 @@ function render(force) {
   $('#syncState').textContent = t({ local: 'sync_local', cloud: 'sync_cloud', offline: 'sync_off' }[Store.mode]);
   if (!Store.loaded) { feed.innerHTML = '<div class="skel"></div><div class="skel"></div>'; return; }
   const counts = Store.counts(), num = {};
-  const visible = Store.posts.filter(p => !p.hidden || (isAdmin && showHidden));   // une confession masquée n'est jamais envoyée aux visiteurs ; seul le modérateur la voit
+  const visible = Store.posts.filter(p => !p.hidden || showHidden);   // masquées par l'admin pour tous ; chacun peut choisir de les voir de son côté   // une confession masquée n'est jamais envoyée aux visiteurs ; seul le modérateur la voit
   visible.filter(p => !p.hidden).sort((a, b) => a.ts - b.ts).forEach((p, i) => { num[p.id] = i + 1; });
   const all = visible.filter(p => moodFilter === 'Tous' || p.mood === moodFilter);
   const cmp = sortMode === 'top' ? (a, b) => (counts[b.id].up - counts[b.id].down) - (counts[a.id].up - counts[a.id].down) || b.ts - a.ts : (a, b) => b.ts - a.ts;
@@ -571,7 +571,7 @@ function render(force) {
   const shownTotal = visible.filter(p => !p.hidden).length;
   $('#total').textContent = shownTotal ? t(shownTotal > 1 ? 'total_n' : 'total_1', { n: shownTotal }) : '';
   $('#empty').hidden = all.length > 0; $('#moreBtn').hidden = all.length <= shown;
-  const nHid = Store.posts.filter(p => p.hidden).length, tg = $('#hidToggle'); tg.hidden = !isAdmin || !nHid; tg.textContent = t(showHidden ? 'hid_hide' : 'hid_show', { n: nHid });
+  const nHid = Store.posts.filter(p => p.hidden).length, tg = $('#hidToggle'); tg.hidden = !nHid; tg.textContent = t(showHidden ? 'hid_hide' : 'hid_show', { n: nHid });
   feed.innerHTML = '';
   all.slice(0, shown).forEach((p, i) => {
     const v = Store.votes[p.id + '__' + VOTER] || 0, c = counts[p.id], cs = p.comments || [], open = openThreads.has(p.id), isSeen = seen.has(p.id);
